@@ -16,7 +16,7 @@
 #include <stdio.h>
 
 // initializing the File Allocation Table/FAT inside of an array
-void initFAT(int blocks) {
+void initFreeSpace(int blocks) {
     int *fat = malloc((blocks + 1) * sizeof(int)); // adding 1 block for VCB
 
     int fatsize = blocks + 1; 

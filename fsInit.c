@@ -44,6 +44,35 @@ typedef struct VolumeControlBlock
 VCB *vcb;
 int *fatTable;
 
+int allocateBlocks(int numOfBlocks) {
+	int startBlockNum = -1;
+	int currentBlockIndex;
+	// int loopIndex;
+	int numOfBlocksAllocated = 0;
+	for(int i = 0; vcb->fatBlockNum; i++)  { // seperate counter for file block size
+		if (fatTable[i] == FREE_BLOCK_FLAG) {
+			if (startBlockNum == -1) {
+				startBlockNum = i;
+			}
+			if (numOfBlocksAllocated < numOfBlocks) {
+				fatTable[currentBlockIndex] =  i;
+			}
+			else if (numOfBlocksAllocated == numOfBlocks) {
+				fatTable[i] = END_OF_FILE_FLAG;
+				// int loopIndex = i + 1;
+				break;
+			}
+			numOfBlocksAllocated++;
+		}
+	}
+	// for (int i = loopIndex; vcb->fatBlockNum, i++) {
+	// 	if (fatTable[i] == FREE_BLOCK_FLAG) {
+	// 		vcb->freeBlockNum = i; 
+	// 	}
+	// }
+	return startBlockNum;
+}
+
 int initFreeSpace(int numberOfBlocks, int blockSize)
     {
     int blocksRequiredForFATTable = (numberOfBlocks * sizeof(int) +
