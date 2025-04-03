@@ -25,6 +25,8 @@
 #include "mfs.h"
 
 #define TEAM_42_FS_SIGNATURE 42
+#define FREE_BLOCK_FLAG -1
+#define END_OF_FILE_FLAG -2
 
 typedef struct VolumeControlBlock
 {
@@ -36,9 +38,43 @@ typedef struct VolumeControlBlock
     int rootDirBlockNum; // block number where the root directory is
     int fatStartBlock; // block number where the free space management (FAT) starts
     int fatBlockNum; //number of blocks FAT occupies
+    int freeBlockNum; // block number where free space starts
 } VCB;
 
 VCB *vcb;
+int *fatTable;
+
+int initFreeSpace(int numberOfBlocks, int blockSize)
+    {
+    int blocksRequiredForFATTable = (numberOfBlocks * sizeof(int) +
+                                     (blockSize - 1)) / blockSize;
+    fatTable = malloc(numberOfBlocks * sizeof(int));
+    if (fatTable == NULL)
+	{
+	    printf("Error allocating memory for free space.\n");
+	}
+
+    fatTable[0] = END_OF_FILE_FLAG;
+	for (int i = 1; i < numberOfBlocks; ++i)
+	{
+	    if (i < blocksRequiredForFATTable)
+	    {
+	        fatTable[i] = i + 1;
+	    }
+	    else if (i == blocksRequiredForFATTable)
+	    {
+	        fatTable[i] = END_OF_FILE_FLAG;
+	    }
+	    else
+	    {
+	        fatTable[i] = FREE_BLOCK_FLAG;
+	    }
+	}
+
+	LBAwrite(fatTable, blocksRequiredForFATTable, 1);
+
+	return blocksRequiredForFATTable;
+    }
 
 int initFileSystem (uint64_t numberOfBlocks, uint64_t blockSize)
 	{
@@ -57,6 +93,11 @@ int initFileSystem (uint64_t numberOfBlocks, uint64_t blockSize)
 	    vcb->volumeSize = numberOfBlocks * blockSize;
 	    vcb->blockSize = blockSize;
 
+        // Initialize free space
+	    int fatBlockNum = initFreeSpace(numberOfBlocks, blockSize);
+	    vcb->fatBlockNum = fatBlockNum;
+	    vcb->fatStartBlock = 1;
+
 	    LBAwrite(vcb, 1, 0);
 	}
 
@@ -68,4 +109,5 @@ void exitFileSystem ()
 	{
 	printf ("System exiting\n");
 	free(vcb);
+	free(fatTable);
 	}
