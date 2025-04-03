@@ -44,32 +44,53 @@ typedef struct VolumeControlBlock
 VCB *vcb;
 int *fatTable;
 
+int findNextFreeBlock(int startBlockNum)
+{
+    for (int i = startBlockNum; i < vcb->numOfBlocks; i++)
+    {
+        if (fatTable[i] == FREE_BLOCK_FLAG)
+        {
+            return i;
+        }
+    }
+
+    return -1;
+}
+
 int allocateBlocks(int numOfBlocks) {
-	int startBlockNum = -1;
-	int currentBlockIndex;
-	// int loopIndex;
-	int numOfBlocksAllocated = 0;
-	for(int i = 0; vcb->fatBlockNum; i++)  { // seperate counter for file block size
-		if (fatTable[i] == FREE_BLOCK_FLAG) {
-			if (startBlockNum == -1) {
-				startBlockNum = i;
-			}
-			if (numOfBlocksAllocated < numOfBlocks) {
-				fatTable[currentBlockIndex] =  i;
-			}
-			else if (numOfBlocksAllocated == numOfBlocks) {
-				fatTable[i] = END_OF_FILE_FLAG;
-				// int loopIndex = i + 1;
-				break;
-			}
-			numOfBlocksAllocated++;
-		}
+	int startBlockNum = vcb->freeBlockNum;
+
+	// First check if we have enough free blocks available
+	int blockAllocations[numOfBlocks];
+	for (int i = 0; i < numOfBlocks; i++)
+	{
+	    int nextFreeBlock = findNextFreeBlock(i);
+	    if (nextFreeBlock == -1)
+	    {
+	        printf("Failed to allocate blocks.\n");
+	        return -1;
+	    }
+	    blockAllocations[i] = nextFreeBlock;
 	}
-	// for (int i = loopIndex; vcb->fatBlockNum, i++) {
-	// 	if (fatTable[i] == FREE_BLOCK_FLAG) {
-	// 		vcb->freeBlockNum = i; 
-	// 	}
-	// }
+
+    // Then allocate blocks, pointing each block to the next block in chain
+	for (int i = 0; i < numOfBlocks; i++)
+	{
+	    int blockNum = blockAllocations[i];
+	    if (i == numOfBlocks - 1)
+	    {
+	        fatTable[blockNum] = END_OF_FILE_FLAG;
+	    }
+	    else
+	    {
+	        int nextBlockNum = blockAllocations[i + 1];
+	        fatTable[blockNum] = nextBlockNum;
+	    }
+	}
+
+	// Keep track of the new free block number
+	vcb->freeBlockNum = findNextFreeBlock(blockAllocations[numOfBlocks - 1]);
+
 	return startBlockNum;
 }
 
@@ -102,6 +123,9 @@ int initFreeSpace(int numberOfBlocks, int blockSize)
 
 	LBAwrite(fatTable, blocksRequiredForFATTable, 1);
 
+    vcb->fatStartBlock = 1;
+	vcb->freeBlockNum = blocksRequiredForFATTable + 1;
+
 	return blocksRequiredForFATTable;
     }
 
@@ -121,11 +145,11 @@ int initFileSystem (uint64_t numberOfBlocks, uint64_t blockSize)
 	    vcb->signature = TEAM_42_FS_SIGNATURE;
 	    vcb->volumeSize = numberOfBlocks * blockSize;
 	    vcb->blockSize = blockSize;
+	    vcb->numOfBlocks = numberOfBlocks;
 
         // Initialize free space
 	    int fatBlockNum = initFreeSpace(numberOfBlocks, blockSize);
 	    vcb->fatBlockNum = fatBlockNum;
-	    vcb->fatStartBlock = 1;
 
 	    LBAwrite(vcb, 1, 0);
 	}
