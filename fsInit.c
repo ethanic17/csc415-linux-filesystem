@@ -20,6 +20,7 @@
 #include <sys/types.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 
 #include "fsLow.h"
 #include "mfs.h"
@@ -40,6 +41,17 @@ typedef struct VolumeControlBlock
     int fatBlockNum; //number of blocks FAT occupies
     int freeBlockNum; // block number where free space starts
 } VCB;
+
+typedef struct DirectoryEntry
+{
+    char name[100];
+    int size;
+    int location;
+    int isDirectory;
+    int used;
+    time_t createdAt;
+    time_t modifiedAt;
+} DE;
 
 VCB *vcb;
 int *fatTable;
@@ -65,13 +77,13 @@ int allocateBlocks(int numOfBlocks) {
 	int currentFreeBlock = startBlockNum;
 	for (int i = 0; i < numOfBlocks; i++)
 	{
+	    blockAllocations[i] = currentFreeBlock;
 	    int nextFreeBlock = findNextFreeBlock(currentFreeBlock);
 	    if (nextFreeBlock == -1)
 	    {
 	        printf("Failed to allocate blocks.\n");
 	        return -1;
 	    }
-	    blockAllocations[i] = nextFreeBlock;
 	    currentFreeBlock = nextFreeBlock;
 	}
 
@@ -90,11 +102,59 @@ int allocateBlocks(int numOfBlocks) {
 	    }
 	}
 
+	LBAwrite(fatTable, vcb->fatBlockNum, vcb->fatStartBlock);
+
 	// Keep track of the new free block number
 	vcb->freeBlockNum = findNextFreeBlock(blockAllocations[numOfBlocks - 1]);
 
 	return startBlockNum;
 }
+
+int initRootDirectory()
+    {
+    int numOfEntries = 50;
+    int requiredNumOfBytes = numOfEntries * sizeof(DE);
+    int requiredNumOfBlocks = (requiredNumOfBytes + (vcb->blockSize - 1)) /
+                              vcb->blockSize;
+
+    // Check if you can fit more entries into the number of blocks we're asking for.
+    int extraEntries = ((requiredNumOfBlocks * vcb->blockSize) -
+                        requiredNumOfBytes) / sizeof(DE);
+    numOfEntries += extraEntries;
+    requiredNumOfBytes += extraEntries * sizeof(DE);
+
+    DE *de = malloc(requiredNumOfBytes);
+    if (de == NULL)
+    {
+        printf("Error allocating memory for directory entries.\n");
+    }
+    for (int i = 0; i < numOfEntries; i++)
+    {
+        de[i].used = 0;
+    }
+
+    // Initialize the two directories "." and ".."
+    int startBlock = allocateBlocks(requiredNumOfBlocks);
+    strcpy(de[0].name, ".");
+    strcpy(de[1].name, "..");
+    time_t timeNow;
+    time(&timeNow);
+    for (int i = 0; i < 2; i++)
+    {
+        de[i].used = 1;
+        de[i].location = startBlock;
+        de[i].size = 0;
+        de[i].isDirectory = 1;
+        de[i].createdAt = timeNow;
+        de[i].modifiedAt = timeNow;
+    }
+
+    LBAwrite(de, requiredNumOfBlocks, startBlock);
+
+    free(de);
+
+    return startBlock;
+    }
 
 int initFreeSpace(int numberOfBlocks, int blockSize)
     {
@@ -152,6 +212,10 @@ int initFileSystem (uint64_t numberOfBlocks, uint64_t blockSize)
         // Initialize free space
 	    int fatBlockNum = initFreeSpace(numberOfBlocks, blockSize);
 	    vcb->fatBlockNum = fatBlockNum;
+
+	    // Initialize root directory
+	    int rootDirBlockNum = initRootDirectory();
+	    vcb->rootDirBlockNum = rootDirBlockNum;
 
 	    LBAwrite(vcb, 1, 0);
 	}
