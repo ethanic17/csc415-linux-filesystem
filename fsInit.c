@@ -46,7 +46,7 @@ int *fatTable;
 
 int findNextFreeBlock(int startBlockNum)
 {
-    for (int i = startBlockNum; i < vcb->numOfBlocks; i++)
+    for (int i = startBlockNum + 1; i < vcb->numOfBlocks; i++)
     {
         if (fatTable[i] == FREE_BLOCK_FLAG)
         {
@@ -62,15 +62,17 @@ int allocateBlocks(int numOfBlocks) {
 
 	// First check if we have enough free blocks available
 	int blockAllocations[numOfBlocks];
+	int currentFreeBlock = startBlockNum;
 	for (int i = 0; i < numOfBlocks; i++)
 	{
-	    int nextFreeBlock = findNextFreeBlock(i);
+	    int nextFreeBlock = findNextFreeBlock(currentFreeBlock);
 	    if (nextFreeBlock == -1)
 	    {
 	        printf("Failed to allocate blocks.\n");
 	        return -1;
 	    }
 	    blockAllocations[i] = nextFreeBlock;
+	    currentFreeBlock = nextFreeBlock;
 	}
 
     // Then allocate blocks, pointing each block to the next block in chain
