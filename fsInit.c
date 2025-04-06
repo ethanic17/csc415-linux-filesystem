@@ -1,9 +1,9 @@
 /**************************************************************
-* Class::  CSC-415-0# Spring 2024
-* Name::
-* Student IDs::
-* GitHub-Name::
-* Group-Name::
+* Class::  CSC-415-02 Spring 2025
+* Name:: Nabeel Rana, Leigh Ann Apotheker, Ethan Zheng, Bryan Mendez
+* Student IDs:: 924432311, 923514173, 922474550
+* GitHub-Name:: nabware
+* Group-Name:: Team 42
 * Project:: Basic File System
 *
 * File:: fsInit.c
@@ -37,20 +37,20 @@ typedef struct VolumeControlBlock
     int numOfBlocks; // total number of blocks in the volume
     int fsBlockNum; // block number where the filesystem metadata is
     int rootDirBlockNum; // block number where the root directory is
-    int fatStartBlock; // block number where the free space management (FAT) starts
-    int fatBlockNum; //number of blocks FAT occupies
+    int fatBlockNum; // block number where the free space management (FAT) starts
+    int fatNumOfBlocks; // number of blocks FAT occupies
     int freeBlockNum; // block number where free space starts
 } VCB;
 
 typedef struct DirectoryEntry
 {
-    char name[100];
-    int size;
-    int location;
-    int isDirectory;
-    int used;
-    time_t createdAt;
-    time_t modifiedAt;
+    char name[100]; // name of the file
+    int size; // size of the file in bytes
+    int location; // block number where the file is
+    int isDirectory; // flag to indicate if this is a directory or not
+    int used; // flag to indicate if the directory entry is used
+    time_t createdAt; // timestamp when file was created
+    time_t modifiedAt; // timestamp when file was last modified
 } DE;
 
 VCB *vcb;
@@ -69,7 +69,8 @@ int findNextFreeBlock(int startBlockNum)
     return -1;
 }
 
-int allocateBlocks(int numOfBlocks) {
+int allocateBlocks(int numOfBlocks)
+{
 	int startBlockNum = vcb->freeBlockNum;
 
 	// First check if we have enough free blocks available
@@ -102,7 +103,7 @@ int allocateBlocks(int numOfBlocks) {
 	    }
 	}
 
-	LBAwrite(fatTable, vcb->fatBlockNum, vcb->fatStartBlock);
+	LBAwrite(fatTable, vcb->fatNumOfBlocks, vcb->fatBlockNum);
 
 	// Keep track of the new free block number
 	vcb->freeBlockNum = findNextFreeBlock(blockAllocations[numOfBlocks - 1]);
@@ -123,51 +124,53 @@ int initRootDirectory()
     numOfEntries += extraEntries;
     requiredNumOfBytes += extraEntries * sizeof(DE);
 
-    DE *de = malloc(requiredNumOfBytes);
-    if (de == NULL)
+    DE *directoryEntries = malloc(requiredNumOfBytes);
+    if (directoryEntries == NULL)
     {
         printf("Error allocating memory for directory entries.\n");
+		return -1;
     }
     for (int i = 0; i < numOfEntries; i++)
     {
-        de[i].used = 0;
+        directoryEntries[i].used = 0;
     }
 
     // Initialize the two directories "." and ".."
     int startBlock = allocateBlocks(requiredNumOfBlocks);
-    strcpy(de[0].name, ".");
-    strcpy(de[1].name, "..");
+    strcpy(directoryEntries[0].name, ".");
+    strcpy(directoryEntries[1].name, "..");
     time_t timeNow;
     time(&timeNow);
     for (int i = 0; i < 2; i++)
     {
-        de[i].used = 1;
-        de[i].location = startBlock;
-        de[i].size = 0;
-        de[i].isDirectory = 1;
-        de[i].createdAt = timeNow;
-        de[i].modifiedAt = timeNow;
+        directoryEntries[i].used = 1;
+        directoryEntries[i].location = startBlock;
+        directoryEntries[i].size = 0;
+        directoryEntries[i].isDirectory = 1;
+        directoryEntries[i].createdAt = timeNow;
+        directoryEntries[i].modifiedAt = timeNow;
     }
 
-    LBAwrite(de, requiredNumOfBlocks, startBlock);
+    LBAwrite(directoryEntries, requiredNumOfBlocks, startBlock);
 
-    free(de);
+    free(directoryEntries);
 
     return startBlock;
     }
 
-int initFreeSpace(int numberOfBlocks, int blockSize)
+int initFreeSpace()
     {
-    int blocksRequiredForFATTable = (numberOfBlocks * sizeof(int) +
-                                     (blockSize - 1)) / blockSize;
-    fatTable = malloc(numberOfBlocks * sizeof(int));
+    int blocksRequiredForFATTable = (vcb->numOfBlocks * sizeof(int) +
+                                     (vcb->blockSize - 1)) / vcb->blockSize;
+    fatTable = malloc(vcb->numOfBlocks * sizeof(int));
     if (fatTable == NULL)
 	{
 	    printf("Error allocating memory for free space.\n");
+		return -1;
 	}
 
     fatTable[0] = END_OF_FILE_FLAG;
-	for (int i = 1; i < numberOfBlocks; ++i)
+	for (int i = 1; i < vcb->numOfBlocks; i++)
 	{
 	    if (i < blocksRequiredForFATTable)
 	    {
@@ -185,8 +188,8 @@ int initFreeSpace(int numberOfBlocks, int blockSize)
 
 	LBAwrite(fatTable, blocksRequiredForFATTable, 1);
 
-    vcb->fatStartBlock = 1;
-	vcb->freeBlockNum = blocksRequiredForFATTable + 1;
+    vcb->fatBlockNum = 1;
+	vcb->freeBlockNum = 1 + blocksRequiredForFATTable;
 
 	return blocksRequiredForFATTable;
     }
@@ -199,6 +202,7 @@ int initFileSystem (uint64_t numberOfBlocks, uint64_t blockSize)
 	if (vcb == NULL)
 	{
 	    printf("Error allocating memory for VCB.\n");
+		return -1;
 	}
 
 	LBAread(vcb, 1, 0);
@@ -208,13 +212,22 @@ int initFileSystem (uint64_t numberOfBlocks, uint64_t blockSize)
 	    vcb->volumeSize = numberOfBlocks * blockSize;
 	    vcb->blockSize = blockSize;
 	    vcb->numOfBlocks = numberOfBlocks;
+		vcb->fsBlockNum = 0;
 
         // Initialize free space
-	    int fatBlockNum = initFreeSpace(numberOfBlocks, blockSize);
-	    vcb->fatBlockNum = fatBlockNum;
+	    int fatNumOfBlocks = initFreeSpace();
+		if (fatNumOfBlocks == -1)
+		{
+			return -1;
+		}
+	    vcb->fatNumOfBlocks = fatNumOfBlocks;
 
 	    // Initialize root directory
 	    int rootDirBlockNum = initRootDirectory();
+		if (rootDirBlockNum == -1)
+		{
+			return -1;
+		}
 	    vcb->rootDirBlockNum = rootDirBlockNum;
 
 	    LBAwrite(vcb, 1, 0);
