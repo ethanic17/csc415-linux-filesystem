@@ -157,6 +157,57 @@ int initRootDirectory()
 
     return startBlock;
     }
+/**
+int readDirectory(int blockNum, DE **entries)
+{
+    if (blockNum < 0 || blockNum >= vcb->numOfBlocks)
+    {
+        printf("Block number is invalid.\n");
+	return -1;
+    }
+    
+    int currentBlock = blockNum;
+    int numBlocks = 0;
+    //Use FAT to get total size
+    while (currentBlock != END_OF_FILE_FLAG)
+    {
+        numBlocks++;
+        currentBlock = fatTable[currentBlock];
+    }
+    
+    // Calculate how many directory entries to be stored
+    int bufferSize = numBlocks * vcb->blockSize;
+    int maxEntries = bufferSize / sizeof(DE);
+    
+    *entries = malloc(bufferSize);
+    if (*entries == NULL)
+    {
+        printf("Allocating memory error.\n");
+        return -1;
+    }
+    
+    // Read all blocks of the directory into the buffer
+    if (LBAread(*entries, numBlocks, blockNum) != numBlocks)
+    {
+        printf("Reading directory blocks error.\n");
+        free(*entries);
+        *entries = NULL;
+        return -1;
+    }
+    
+    // Count how many entries are used
+    int usedEntries = 0;
+    for (int i = 0; i < maxEntries; i++)
+    {
+        if ((*entries)[i].used)
+        {
+            usedEntries++;
+        }
+    }
+    
+    return usedEntries;
+}
+**/
 
 int initFreeSpace()
     {
