@@ -1,9 +1,9 @@
 /**************************************************************
-* Class::  CSC-415-0# Spring 2024
-* Name::
-* Student IDs::
-* GitHub-Name::
-* Group-Name::
+* Class::  CSC-415-02 Spring 2025
+* Name:: Nabeel Rana, Leigh Ann Apotheker, Ethan Zheng, Bryan Mendez
+* Student IDs:: 924432311, 923514173, 922474550, 922744724
+* GitHub-Name:: nabware
+* Group-Name:: Team 42
 * Project:: Basic File System
 *
 * File:: fsShell.c

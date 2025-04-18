@@ -1,9 +1,9 @@
 /**************************************************************
-* Class::  CSC-415-0# Spring 2024
-* Name::
-* Student IDs::
-* GitHub-Name::
-* Group-Name::
+* Class::  CSC-415-02 Spring 2025
+* Name:: Nabeel Rana, Leigh Ann Apotheker, Ethan Zheng, Bryan Mendez
+* Student IDs:: 924432311, 923514173, 922474550, 922744724
+* GitHub-Name:: nabware
+* Group-Name:: Team 42
 * Project:: Basic File System
 *
 * File:: mfs.h
@@ -36,6 +36,40 @@ typedef u_int64_t uint64_t;
 typedef u_int32_t uint32_t;
 #endif
 
+#define TEAM_42_FS_SIGNATURE 42
+#define FREE_BLOCK_FLAG -1
+#define END_OF_FILE_FLAG -2
+#define PATHMAX_LEN 4096
+
+typedef struct VolumeControlBlock
+{
+    int signature; // unique identifier to verify the file system type
+    int volumeSize; // size of the volume in bytes
+    int blockSize; // size of each block in bytes
+    int numOfBlocks; // total number of blocks in the volume
+    int fsBlockNum; // block number where the filesystem metadata is
+    int rootDirBlockNum; // block number where the root directory is
+    int fatBlockNum; // block number where the free space management (FAT) starts
+    int fatNumOfBlocks; // number of blocks FAT occupies
+    int freeBlockNum; // block number where free space starts
+	int numOfEntries; // number of entries per directory
+} VCB;
+
+typedef struct DirectoryEntry
+{
+    char name[100]; // name of the file
+    int size; // size of the file in bytes
+    int location; // block number where the file is
+    int isDirectory; // flag to indicate if this is a directory or not
+    int used; // flag to indicate if the directory entry is used
+    time_t createdAt; // timestamp when file was created
+    time_t modifiedAt; // timestamp when file was last modified
+} DE;
+
+extern VCB *vcb;
+extern int *fatTable;
+extern char cwd[PATHMAX_LEN];
+
 // This structure is returned by fs_readdir to provide the caller with information
 // about each file as it iterates through a directory
 struct fs_diriteminfo
@@ -55,7 +89,7 @@ typedef struct
 	/*****TO DO:  Fill in this structure with what your open/read directory needs  *****/
 	unsigned short  d_reclen;		/* length of this record */
 	unsigned short	dirEntryPosition;	/* which directory entry position, like file pos */
-	//DE *	directory;			/* Pointer to the loaded directory you want to iterate */
+	DE *	directory;			/* Pointer to the loaded directory you want to iterate */
 	struct fs_diriteminfo * di;		/* Pointer to the structure you return from read */
 	} fdDir;
 
@@ -75,12 +109,15 @@ int fs_isFile(char * filename);	//return 1 if file, 0 otherwise
 int fs_isDir(char * pathname);		//return 1 if directory, 0 otherwise
 int fs_delete(char* filename);	//removes a file
 
+// Helper functions
+int findNextFreeBlock(int startBlockNum);
+int allocateBlocks(int numOfBlocks); // allocates blocks and returns start block
 
 // This is the strucutre that is filled in from a call to fs_stat
 struct fs_stat
 	{
 	off_t     st_size;    		/* total size, in bytes */
-	blksize_t st_blksize; 		/* blocksize for file system I/O */
+	// blksize_t st_blksize; 		/* blocksize for file system I/O */
 	blkcnt_t  st_blocks;  		/* number of 512B blocks allocated */
 	time_t    st_accesstime;   	/* time of last access */
 	time_t    st_modtime;   	/* time of last modification */

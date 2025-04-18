@@ -25,92 +25,6 @@
 #include "fsLow.h"
 #include "mfs.h"
 
-#define TEAM_42_FS_SIGNATURE 42
-#define FREE_BLOCK_FLAG -1
-#define END_OF_FILE_FLAG -2
-
-typedef struct VolumeControlBlock
-{
-    int signature; // unique identifier to verify the file system type
-    int volumeSize; // size of the volume in bytes
-    int blockSize; // size of each block in bytes
-    int numOfBlocks; // total number of blocks in the volume
-    int fsBlockNum; // block number where the filesystem metadata is
-    int rootDirBlockNum; // block number where the root directory is
-    int fatBlockNum; // block number where the free space management (FAT) starts
-    int fatNumOfBlocks; // number of blocks FAT occupies
-    int freeBlockNum; // block number where free space starts
-} VCB;
-
-typedef struct DirectoryEntry
-{
-    char name[100]; // name of the file
-    int size; // size of the file in bytes
-    int location; // block number where the file is
-    int isDirectory; // flag to indicate if this is a directory or not
-    int used; // flag to indicate if the directory entry is used
-    time_t createdAt; // timestamp when file was created
-    time_t modifiedAt; // timestamp when file was last modified
-} DE;
-
-VCB *vcb;
-int *fatTable;
-
-int findNextFreeBlock(int startBlockNum)
-{
-    for (int i = startBlockNum + 1; i < vcb->numOfBlocks; i++)
-    {
-        if (fatTable[i] == FREE_BLOCK_FLAG)
-        {
-            return i;
-        }
-    }
-
-    return -1;
-}
-
-int allocateBlocks(int numOfBlocks)
-{
-	int startBlockNum = vcb->freeBlockNum;
-
-	// First check if we have enough free blocks available
-	int blockAllocations[numOfBlocks];
-	int currentFreeBlock = startBlockNum;
-	for (int i = 0; i < numOfBlocks; i++)
-	{
-	    blockAllocations[i] = currentFreeBlock;
-	    int nextFreeBlock = findNextFreeBlock(currentFreeBlock);
-	    if (nextFreeBlock == -1)
-	    {
-	        printf("Failed to allocate blocks.\n");
-	        return -1;
-	    }
-	    currentFreeBlock = nextFreeBlock;
-	}
-
-    // Then allocate blocks, pointing each block to the next block in chain
-	for (int i = 0; i < numOfBlocks; i++)
-	{
-	    int blockNum = blockAllocations[i];
-	    if (i == numOfBlocks - 1)
-	    {
-	        fatTable[blockNum] = END_OF_FILE_FLAG;
-	    }
-	    else
-	    {
-	        int nextBlockNum = blockAllocations[i + 1];
-	        fatTable[blockNum] = nextBlockNum;
-	    }
-	}
-
-	LBAwrite(fatTable, vcb->fatNumOfBlocks, vcb->fatBlockNum);
-
-	// Keep track of the new free block number
-	vcb->freeBlockNum = findNextFreeBlock(blockAllocations[numOfBlocks - 1]);
-
-	return startBlockNum;
-}
-
 int initRootDirectory()
     {
     int numOfEntries = 50;
@@ -154,6 +68,8 @@ int initRootDirectory()
     LBAwrite(directoryEntries, requiredNumOfBlocks, startBlock);
 
     free(directoryEntries);
+
+    vcb->numOfEntries = numOfEntries;
 
     return startBlock;
     }
@@ -282,6 +198,16 @@ int initFileSystem (uint64_t numberOfBlocks, uint64_t blockSize)
 	    vcb->rootDirBlockNum = rootDirBlockNum;
 
 	    LBAwrite(vcb, 1, 0);
+	}
+    else
+	{
+		fatTable = malloc(vcb->fatNumOfBlocks * vcb->blockSize);
+		if (fatTable == NULL)
+		{
+			printf("Error allocating memory for free space.\n");
+			return -1;
+		}
+		LBAread(fatTable, vcb->fatNumOfBlocks, vcb->fatBlockNum);
 	}
 
 	return 0;
