@@ -81,3 +81,89 @@ int allocateBlocks(int numOfBlocks)
 
 	return startBlockNum;
 }
+
+fdDir * fs_opendir(const char *pathname)
+{
+    // Get the directory entries and initialize the file descriptor for the
+    // directory.
+    DE *directory = getDirEntriesFromPath(pathname);
+    if (directory == NULL)
+    {
+        return NULL;
+    }
+    fdDir *fd = malloc(sizeof(fdDir));
+    fd->dirEntryPosition = 0;
+    fd->d_reclen = vcb->numOfEntries; 
+    fd->directory = directory;
+    fd->di = malloc(sizeof(struct fs_diriteminfo));
+
+    return fd;
+}
+
+DE* getDirEntriesFromPath(const char *pathname)
+{
+    // Get the root directory entries
+    int requiredNumOfBytes = vcb->numOfEntries * sizeof(DE);
+    int requiredNumOfBlocks = (requiredNumOfBytes + (vcb->blockSize - 1)) /
+                              vcb->blockSize;
+    DE* dirEntries = malloc(requiredNumOfBlocks * vcb->blockSize);
+    if (dirEntries == NULL)
+    {
+        return NULL;
+    }
+    readDirEntries(dirEntries, vcb->rootDirBlockNum);
+
+    // Get the absolute path
+    char absolutePath[PATHMAX_LEN];
+    getAbsolutePath(absolutePath, pathname);
+
+    // Look for each directory in the path and get their directory entries
+    // to then look for the next directory until you're left with the 
+    // directory entries of the last directory in the path.
+    char* dirName = strtok(absolutePath, "/");
+    while (dirName != NULL)
+    {
+        int dirFound = 0;
+        for (int i = 0; i < vcb->numOfEntries; i++)
+        {
+            if (dirEntries[i].used == 1 && dirEntries[i].isDirectory == 1)
+            {
+                // When we find the directory, get that directory's
+                // directory entries.
+                if (strcmp(dirName, dirEntries[i].name) == 0)
+                {
+                    dirFound = 1;
+                    readDirEntries(dirEntries, dirEntries[i].location);
+                    break;
+                }
+            }
+        }
+        // If we cannot find the directory in the current directory entries then
+        // the path is invalid.
+        if (dirFound == 0)
+        {
+            free(dirEntries);
+            return NULL;
+        }
+        dirName = strtok(NULL, "/");
+    }
+
+    return dirEntries;
+}
+
+int fs_closedir(fdDir *dirp)
+{
+    if (dirp != NULL)
+    {
+        if (dirp->directory != NULL)
+        {
+            free(dirp->directory);
+        }
+        if (dirp->di != NULL)
+        {
+            free(dirp->di);
+        }
+        free(dirp);
+    }
+    return 0;
+}
