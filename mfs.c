@@ -82,6 +82,19 @@ int allocateBlocks(int numOfBlocks)
 	return startBlockNum;
 }
 
+// Reads blocks of directory entires from disk
+void readDirEntries(DE* dirEntries, int startBlock)
+{
+    int currBlock = startBlock;
+    int blockOffset = 0;
+    while (currBlock != END_OF_FILE_FLAG)
+    {
+        LBAread(&dirEntries[blockOffset], 1, currBlock);
+        currBlock = fatTable[currBlock];
+        blockOffset = blockOffset + vcb->blockSize;
+    }
+}
+
 fdDir * fs_opendir(const char *pathname)
 {
     // Get the directory entries and initialize the file descriptor for the
