@@ -113,6 +113,7 @@ int fs_delete(char* filename);	//removes a file
 int findNextFreeBlock(int startBlockNum);
 int allocateBlocks(int numOfBlocks); // allocates blocks and returns start block
 void readDirEntries(DE* dirEntries, int startBlock);
+DE* getDirEntriesFromPath(const char *pathname);
 
 // This is the strucutre that is filled in from a call to fs_stat
 struct fs_stat
