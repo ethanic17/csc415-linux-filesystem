@@ -255,7 +255,7 @@ int fs_mkdir(const char *pathname, mode_t mode) {
 
     //Find the last slash to separate the directory name from the parent path
     char parentPath[PATHMAX_LEN] = {0};
-    char dirName[100] = {0};  // Max directory name length is 100 as per DirectoryEntry struct
+    char dirName[100] = {0};  
     
     char *lastSlash = strrchr(absolutePath, '/');
     if (lastSlash == NULL) {
@@ -338,7 +338,7 @@ int fs_mkdir(const char *pathname, mode_t mode) {
         newDirEntries[i].used = 0;
     }
 
-    int parentDirBlockNum = parentDirEntries[0].location; // "." entry points to the directory itself
+    int parentDirBlockNum = parentDirEntries[0].location; 
 
     //Set up "." and ".." entries
     time_t timeNow;
