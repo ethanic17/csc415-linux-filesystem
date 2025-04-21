@@ -50,7 +50,7 @@ int initRootDirectory()
     }
 
     // Initialize the two directories "." and ".."
-    int startBlock = allocateBlocks(requiredNumOfBlocks);
+    int startBlock = allocateBlocks(vcb->freeBlockNum, requiredNumOfBlocks);
     strcpy(directoryEntries[0].name, ".");
     strcpy(directoryEntries[1].name, "..");
     time_t timeNow;
@@ -69,7 +69,7 @@ int initRootDirectory()
 
     free(directoryEntries);
 
-    vcb->numOfEntries = numOfEntries;
+	vcb->numOfEntries = numOfEntries;
 
     return startBlock;
     }
@@ -148,7 +148,7 @@ int initFileSystem (uint64_t numberOfBlocks, uint64_t blockSize)
 
 	    LBAwrite(vcb, 1, 0);
 	}
-    else
+	else
 	{
 		fatTable = malloc(vcb->fatNumOfBlocks * vcb->blockSize);
 		if (fatTable == NULL)
