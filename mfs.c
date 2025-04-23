@@ -674,7 +674,7 @@ int fs_mkdir(const char *pathname, mode_t mode)
     char parentPath[PATHMAX_LEN];
     getParentPath(parentPath, absolutePath);
 
-    // Look for an unsed directory entry in parent directory
+    // Look for an unused directory entry in parent directory
     DE *parentDirEntries = getDirEntriesFromPath(parentPath);
     int dirEntryIndex = -1;
     for (int i = 0; i < vcb->numOfEntries; i++)
