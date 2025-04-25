@@ -353,7 +353,7 @@ int cmd_cp (int argcnt, char *argvec[])
 			strcpy(updatedDest, dest);
 
 			// append source file name to destination directory
-			if (newDest[strlen(updatedDest)-1] != '/')
+			if (updatedDest[strlen(updatedDest)-1] != '/')
 				strcat(updatedDest, "/");
 			strcat(updatedDest, srcFileName);
 			
