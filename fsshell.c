@@ -342,9 +342,34 @@ int cmd_cp (int argcnt, char *argvec[])
 			return (-1);
 		}
 	
+
+		// if source dest is a directory, appends file name to 
+		// destination directory
+		if (fs_isDir(dest)) {
+			char updatedDest[PATHMAX_LEN];
+			char srcFileName[PATHMAX_LEN];
+			
+			getLastElementName(srcFileName, src);
+			strcpy(updatedDest, dest);
+
+			// append source file name to destination directory
+			if (newDest[strlen(updatedDest)-1] != '/')
+				strcat(updatedDest, "/");
+			strcat(updatedDest, srcFileName);
+			
+			dest = updatedDest;
+		}
 	
-	testfs_src_fd = b_open (src, O_RDONLY);
-	testfs_dest_fd = b_open (dest, O_WRONLY | O_CREAT | O_TRUNC);
+
+	testfs_src_fd = b_open(src, O_RDONLY);
+    
+	// checking if the source returned -1
+    testfs_dest_fd = b_open(dest, O_WRONLY | O_CREAT | O_TRUNC);
+    if (testfs_dest_fd < 0) {
+        printf("Error: could not open file '%s'\n", dest);
+        b_close(testfs_src_fd);
+        return -1;
+    }
 	do 
 		{
 		readcnt = b_read (testfs_src_fd, buf, BUFFERLEN);
