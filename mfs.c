@@ -476,6 +476,7 @@ int fs_move(char* src, char* dest)
     int destIsDir = fs_isDir(dest);
     if (destIsFile == 1 || destIsDir == 1)
     {
+        printf("Error: file with same name exists in destination.\n");
         return -1;
     }
     char destAbsolutePath[PATHMAX_LEN];
