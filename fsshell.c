@@ -390,6 +390,7 @@ int cmd_mv (int argcnt, char *argvec[])
 	// **** TODO ****  For you to implement	
 		char * src;
 		char * dest;
+		char updatedDest[PATHMAX_LEN];
 
 		switch (argcnt)
 			{				
@@ -402,6 +403,19 @@ int cmd_mv (int argcnt, char *argvec[])
 				printf("Usage: mv srcfile [destfile]\n");
 				return (-1);
 			}
+
+		if (fs_isDir(dest)) {
+			char srcFileName[PATHMAX_LEN];
+			
+			getLastElementName(srcFileName, src);
+			strcpy(updatedDest, dest);
+
+			if (updatedDest[strlen(updatedDest)-1] != '/')
+				strcat(updatedDest, "/");
+			strcat(updatedDest, srcFileName);
+			
+			dest = updatedDest;
+		}
 		return (fs_move(src, dest));
 #endif
 	return 0;
