@@ -766,6 +766,8 @@ int main (int argc, char * argv[])
 	uint64_t volumeSize;
 	uint64_t blockSize;
     int retVal;
+
+	char prompt[DIRMAX_LEN + 10]; // add extra space for prompt string and null term
     
 	if (argc > 3)
 		{
@@ -866,7 +868,9 @@ int main (int argc, char * argv[])
 	
 	while (1)
 		{
-		cmdin = readline("Prompt > ");
+		fs_getcwd (prompt, DIRMAX_LEN); // specifies what dir you are in
+        strcat(prompt, " > ");
+		cmdin = readline(prompt);
 #ifdef COMMAND_DEBUG
 		printf ("%s\n", cmdin);
 #endif
